@@ -1,0 +1,109 @@
+#!/bin/bash
+
+set -e
+set -o pipefail
+shopt -s dotglob
+
+if [ -n "$BUILDPACK_DEBUG" ]; then
+  set -x
+fi
+
+basedir="$( cd -P "$( dirname "$0" )" && pwd )"
+source $basedir/common.sh
+source $basedir/../config/versions.sh
+
+BUILD_DIR="$1"
+CACHE_DIR="$2"
+export_env_dir "$3"
+
+VENDOR_BASE_URL="${VENDOR_URL:-https://nginx-buildpack.s3.amazonaws.com}"
+STACK="${STACK:-scalingo-20}"
+VENDOR_URL="${VENDOR_BASE_URL}/${STACK}"
+LOG_FILES=(vendor/nginx/logs/access.log vendor/nginx/logs/error.log)
+
+SEMVER_SERVER="https://semver.scalingo.com"
+DEFAULT_NGINX=$(curl --fail --location --silent "${SEMVER_SERVER}/nginx-${STACK}")
+NGINX_VERSION=${NGINX_VERSION:-$DEFAULT_NGINX}
+MODSECURITY_VERSION=${MODSECURITY_VERSION:-$default_modsecurity_version}
+MODSECURITY_CORE_RULE_SET_VERSION="${MODSECURITY_CORE_RULE_SET_VERSION:-$default_modsecurity_coreruleset_version}"
+
+mkdir -p "${CACHE_DIR}/package"
+mkdir -p "${BUILD_DIR}/bin"
+mkdir -p "${BUILD_DIR}/vendor"
+mkdir -p "${BUILD_DIR}/.profile.d"
+
+export PATH="$BUILD_DIR/bin:$PATH"
+
+status "Bundling Nginx ${NGINX_VERSION}"
+fetch_engine_package nginx "$NGINX_VERSION" "${HOME}/vendor/nginx" | indent
+
+cat > "$BUILD_DIR/.profile.d/nginx.sh" <<SH
+export PATH=/sbin:/bin:/usr/sbin:/usr/bin:/app/bin:\${HOME}/vendor/nginx/sbin:\${HOME}/vendor/bin:\$PATH
+export APP_BUILD_TIME=$(date +%Y%m%d%H%M%S)
+SH
+
+source "$BUILD_DIR/.profile.d/nginx.sh"
+
+cp "$basedir/../config/nginx.conf.erb" "$BUILD_DIR/base_nginx.conf.erb"
+
+
+if [ "$ENABLE_MODSECURITY" = "true" ] ; then
+
+  fetch_engine_package modsecurity "$MODSECURITY_VERSION" \
+    "${HOME}/vendor/modsecurity" | indent
+
+  cat > "$BUILD_DIR/.profile.d/modsecurity.sh" <<SH
+  export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:\$HOME/vendor/modsecurity/usr/lib/x86_64-linux-gnu:\$HOME/vendor/modsecurity/lib
+  erb "\$HOME/vendor/nginx/conf/modsecurity.conf.erb" > "\$HOME/vendor/nginx/conf/modsecurity.conf"
+SH
+
+  status "Bundling ModSecurity CoreRuleSet ${MODSECURITY_CORE_RULE_SET_VERSION}"
+  crs_url="https://github.com/coreruleset/coreruleset"
+  curl --location --silent "${crs_url}/archive/refs/tags/v${MODSECURITY_CORE_RULE_SET_VERSION}.tar.gz" \
+    | tar -C "$BUILD_DIR/vendor/nginx/conf" -xzf -
+
+  mv "$BUILD_DIR/vendor/nginx/conf/coreruleset-${MODSECURITY_CORE_RULE_SET_VERSION}" "$BUILD_DIR/vendor/nginx/conf/crs"
+
+  cp "$basedir/../config/modsec/unicode.mapping" "$BUILD_DIR/vendor/nginx/conf"
+  cp "$basedir/../config/modsec/modsecurity.conf.erb" "$BUILD_DIR/vendor/nginx/conf"
+  cp "$basedir/../config/modsec/modsec-nginx.conf" "$BUILD_DIR/vendor/nginx/conf"
+  cp "$basedir/../config/modsec/crs-config.conf" "$BUILD_DIR/vendor/nginx/conf"
+fi
+
+cat > "$BUILD_DIR/bin/run" <<SH
+#!/usr/bin/env bash
+
+basedir="\$( cd -P "\$(dirname \$(dirname "\$0" ))" && pwd )"
+pmsgr=/tmp/pmsgr
+rm -f \$pmsgr
+mkfifo \$pmsgr
+
+[ -f \$basedir/servers.conf.erb ] && export HAS_SERVER_CONF=true
+
+erb base_nginx.conf.erb > "\$basedir/vendor/nginx/conf/nginx.conf"
+
+if [ -f "\$basedir/nginx.conf.erb" ] ; then
+  erb "\$basedir/nginx.conf.erb" > "\$basedir/vendor/nginx/conf/site.conf"
+elif [ -f \$basedir/servers.conf.erb ] ; then
+  erb "\$basedir/servers.conf.erb" > "\$basedir/vendor/nginx/conf/servers.conf"
+elif [ -f \$basedir/nginx.conf ] ; then
+  cp "\$basedir/nginx.conf" "\$basedir/vendor/nginx/conf/site.conf"
+else
+  echo 'nginx.conf or nginx.conf.erb should be located at the root of the project'
+  exit 1
+fi
+
+`init_log_plex ${LOG_FILES[@]}`
+`tail_log_plex ${LOG_FILES[@]}`
+
+(
+    nginx -p "\$basedir/vendor/nginx" -c "\$basedir/vendor/nginx/conf/nginx.conf"
+    echo "nginx" > \$pmsgr
+) &
+
+read exitproc <\$pmsgr
+echo "Boot failed: \$exitproc"
+exit 1
+SH
+
+chmod +x "$BUILD_DIR/bin/run"

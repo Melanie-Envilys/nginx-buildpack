@@ -36,7 +36,14 @@ mkdir -p "${BUILD_DIR}/.profile.d"
 export PATH="$BUILD_DIR/bin:$PATH"
 
 status "Bundling Nginx ${NGINX_VERSION}"
-fetch_engine_package nginx "$NGINX_VERSION" "${HOME}/vendor/nginx" | indent
+fetch_engine_package nginx "$NGINX_VERSION" "$BUILD_DIR/vendor/nginx" | indent
+
+# Ensure nginx conf directory exists
+mkdir -p "$BUILD_DIR/vendor/nginx/conf"
+status "Created nginx conf directory: $BUILD_DIR/vendor/nginx/conf"
+
+# Also ensure modules directory exists (for NJS modules)
+mkdir -p "$BUILD_DIR/vendor/nginx/modules"
 
 # Download and install NJS module
 status "Bundling NJS module ${NJS_VERSION}"
@@ -117,7 +124,7 @@ cp "$basedir/../config/nginx.conf.erb" "$BUILD_DIR/base_nginx.conf.erb"
 if [ "$ENABLE_MODSECURITY" = "true" ] ; then
 
   fetch_engine_package modsecurity "$MODSECURITY_VERSION" \
-    "${HOME}/vendor/modsecurity" | indent
+    "$BUILD_DIR/vendor/modsecurity" | indent
 
   cat > "$BUILD_DIR/.profile.d/modsecurity.sh" <<SH
   export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:\$HOME/vendor/modsecurity/usr/lib/x86_64-linux-gnu:\$HOME/vendor/modsecurity/lib

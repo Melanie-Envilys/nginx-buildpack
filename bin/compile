@@ -22,8 +22,8 @@ VENDOR_URL="${VENDOR_BASE_URL}/${STACK}"
 LOG_FILES=(vendor/nginx/logs/access.log vendor/nginx/logs/error.log)
 
 SEMVER_SERVER="https://semver.scalingo.com"
-DEFAULT_NGINX=$(curl --fail --location --silent "${SEMVER_SERVER}/nginx-${STACK}")
-NGINX_VERSION=${NGINX_VERSION:-$DEFAULT_NGINX}
+# DEFAULT_NGINX=$(curl --fail --location --silent "${SEMVER_SERVER}/nginx-${STACK}")
+NGINX_VERSION=${NGINX_VERSION:-$default_nginx_version}
 MODSECURITY_VERSION=${MODSECURITY_VERSION:-$default_modsecurity_version}
 MODSECURITY_CORE_RULE_SET_VERSION="${MODSECURITY_CORE_RULE_SET_VERSION:-$default_modsecurity_coreruleset_version}"
 NJS_VERSION=${NJS_VERSION:-$default_njs_version}

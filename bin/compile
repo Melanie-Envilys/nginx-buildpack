@@ -102,7 +102,13 @@ load_module modules/ngx_http_js_module.so;
 load_module modules/ngx_stream_js_module.so;
 CONF
 
+# Create a profile script specifically for NJS
+cat > "$BUILD_DIR/.profile.d/njs.sh" <<SH
+# NJS module configuration
+export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:\$HOME/vendor/nginx/modules
+SH
 
+# General nginx profile script
 cat > "$BUILD_DIR/.profile.d/nginx.sh" <<SH
 export PATH=/sbin:/bin:/usr/sbin:/usr/bin:/app/bin:\${HOME}/vendor/nginx/sbin:\${HOME}/vendor/bin:\$PATH
 export APP_BUILD_TIME=$(date +%Y%m%d%H%M%S)

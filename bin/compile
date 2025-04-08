@@ -40,15 +40,59 @@ fetch_engine_package nginx "$NGINX_VERSION" "${HOME}/vendor/nginx" | indent
 
 # Download and install NJS module
 status "Bundling NJS module ${NJS_VERSION}"
-NJS_URL="https://nginx.org/packages/ubuntu/pool/nginx/n/nginx-module-njs/nginx-module-njs-dbg_${NGINX_VERSION}%2B${NJS_VERSION}-1~jammy_amd64.deb"
+
+# More explicit URL formation
+NJS_URL="https://nginx.org/packages/ubuntu/pool/nginx/n/nginx-module-njs/nginx-module-njs_${NGINX_VERSION}%2B${NJS_VERSION}-1~jammy_amd64.deb"
 NJS_DEB="/tmp/nginx-module-njs.deb"
 
-curl -sL "$NJS_URL" -o "$NJS_DEB" | indent
+status "Downloading from URL: $NJS_URL"
+# Use -v for verbose output and -L to follow redirects
+curl -v -L "$NJS_URL" -o "$NJS_DEB" 2>&1 | indent
+
+# Check if file was downloaded and has content
+if [ ! -s "$NJS_DEB" ]; then
+  status "ERROR: Download failed or resulted in empty file"
+  status "Trying with wget as alternative"
+  
+  wget -v "$NJS_URL" -O "$NJS_DEB" 2>&1 | indent
+  
+  if [ ! -s "$NJS_DEB" ]; then
+    status "ERROR: Both curl and wget failed to download the file"
+    exit 1
+  fi
+fi
+
+status "Download completed. File size:"
+ls -lh "$NJS_DEB" | indent
+
+status "File type check:"
+file "$NJS_DEB" | indent
+
 status "Extracting NJS module"
 mkdir -p /tmp/njs-extract
-dpkg -x "$NJS_DEB" /tmp/njs-extract
+dpkg -x "$NJS_DEB" /tmp/njs-extract 2>&1 | indent
+
+if [ $? -ne 0 ]; then
+  status "ERROR: Failed to extract NJS package"
+  status "First 100 bytes of downloaded file:"
+  head -c 100 "$NJS_DEB" | hexdump -C | indent
+  exit 1
+fi
+
+status "Extracted files:"
+find /tmp/njs-extract -type f | indent
+
 mkdir -p "$BUILD_DIR/vendor/nginx/modules"
-cp /tmp/njs-extract/usr/lib/nginx/modules/*.so "$BUILD_DIR/vendor/nginx/modules/"
+cp /tmp/njs-extract/usr/lib/nginx/modules/*.so "$BUILD_DIR/vendor/nginx/modules/" 2>&1 | indent
+
+if [ $? -ne 0 ]; then
+  status "ERROR: Failed to copy NJS module files"
+  status "Contents of extracted directory:"
+  find /tmp/njs-extract -type f | indent
+  exit 1
+fi
+
+status "NJS module successfully installed"
 rm -rf /tmp/njs-extract "$NJS_DEB"
 
 # Create a file with just the module loading directives

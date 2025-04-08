@@ -26,6 +26,7 @@ DEFAULT_NGINX=$(curl --fail --location --silent "${SEMVER_SERVER}/nginx-${STACK}
 NGINX_VERSION=${NGINX_VERSION:-$DEFAULT_NGINX}
 MODSECURITY_VERSION=${MODSECURITY_VERSION:-$default_modsecurity_version}
 MODSECURITY_CORE_RULE_SET_VERSION="${MODSECURITY_CORE_RULE_SET_VERSION:-$default_modsecurity_coreruleset_version}"
+NJS_VERSION=${NJS_VERSION:-$default_njs_version}
 
 mkdir -p "${CACHE_DIR}/package"
 mkdir -p "${BUILD_DIR}/bin"
@@ -37,9 +38,35 @@ export PATH="$BUILD_DIR/bin:$PATH"
 status "Bundling Nginx ${NGINX_VERSION}"
 fetch_engine_package nginx "$NGINX_VERSION" "${HOME}/vendor/nginx" | indent
 
+# Download and install NJS module
+status "Bundling NJS module ${NJS_VERSION}"
+NJS_URL="https://nginx.org/packages/ubuntu/pool/nginx/n/nginx-module-njs/nginx-module-njs_${NGINX_VERSION}%2B${NJS_VERSION}-1~jammy_amd64.deb"
+NJS_DEB="/tmp/nginx-module-njs.deb"
+
+curl -sL "$NJS_URL" -o "$NJS_DEB" | indent
+status "Extracting NJS module"
+mkdir -p /tmp/njs-extract
+dpkg -x "$NJS_DEB" /tmp/njs-extract
+mkdir -p "$BUILD_DIR/vendor/nginx/modules"
+cp /tmp/njs-extract/usr/lib/nginx/modules/*.so "$BUILD_DIR/vendor/nginx/modules/"
+rm -rf /tmp/njs-extract "$NJS_DEB"
+
+# Create a file with just the module loading directives
+cat > "$BUILD_DIR/njs_modules.conf" <<'CONF'
+# Load NJS module
+load_module modules/ngx_http_js_module.so;
+load_module modules/ngx_stream_js_module.so;
+CONF
+
+# Install required PCRE2 libraries
+status "Installing PCRE2 libraries"
+apt-get update -qq
+apt-get install -y -qq libpcre2-8-0 libpcre2-dev
+
 cat > "$BUILD_DIR/.profile.d/nginx.sh" <<SH
 export PATH=/sbin:/bin:/usr/sbin:/usr/bin:/app/bin:\${HOME}/vendor/nginx/sbin:\${HOME}/vendor/bin:\$PATH
 export APP_BUILD_TIME=$(date +%Y%m%d%H%M%S)
+export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/usr/lib/x86_64-linux-gnu
 SH
 
 source "$BUILD_DIR/.profile.d/nginx.sh"
@@ -80,7 +107,11 @@ mkfifo \$pmsgr
 
 [ -f \$basedir/servers.conf.erb ] && export HAS_SERVER_CONF=true
 
-erb base_nginx.conf.erb > "\$basedir/vendor/nginx/conf/nginx.conf"
+erb base_nginx.conf.erb > "\$basedir/vendor/nginx/conf/nginx.conf.tmp"
+
+# Insert NJS module loading directives at the beginning of nginx.conf
+cat "\$basedir/njs_modules.conf" "\$basedir/vendor/nginx/conf/nginx.conf.tmp" > "\$basedir/vendor/nginx/conf/nginx.conf"
+rm "\$basedir/vendor/nginx/conf/nginx.conf.tmp"
 
 if [ -f "\$basedir/nginx.conf.erb" ] ; then
   erb "\$basedir/nginx.conf.erb" > "\$basedir/vendor/nginx/conf/site.conf"

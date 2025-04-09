@@ -102,17 +102,17 @@ load_module modules/ngx_http_js_module.so;
 load_module modules/ngx_stream_js_module.so;
 CONF
 
-# Create a profile script specifically for NJS
+# Create a profile script specifically for NJS - put PCRE2 paths first
 cat > "$BUILD_DIR/.profile.d/njs.sh" <<SH
 # NJS module configuration
-export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:\$HOME/vendor/nginx/modules
+export LD_LIBRARY_PATH=/app/.apt/usr/lib/x86_64-linux-gnu:/app/.apt/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu:\$LD_LIBRARY_PATH:\$HOME/vendor/nginx/modules
 SH
 
-# General nginx profile script
+# General nginx profile script - with PCRE2 paths first
 cat > "$BUILD_DIR/.profile.d/nginx.sh" <<SH
 export PATH=/sbin:/bin:/usr/sbin:/usr/bin:/app/bin:\${HOME}/vendor/nginx/sbin:\${HOME}/vendor/bin:\$PATH
 export APP_BUILD_TIME=$(date +%Y%m%d%H%M%S)
-export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/usr/lib/x86_64-linux-gnu:/app/.apt/usr/lib/x86_64-linux-gnu
+export LD_LIBRARY_PATH=/app/.apt/usr/lib/x86_64-linux-gnu:/app/.apt/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu:\$LD_LIBRARY_PATH
 SH
 
 source "$BUILD_DIR/.profile.d/nginx.sh"
@@ -157,7 +157,6 @@ erb base_nginx.conf.erb > "\$basedir/vendor/nginx/conf/nginx.conf.tmp"
 
 # Insert NJS module loading directives at the beginning of nginx.conf
 cat "\$basedir/njs_modules.conf" "\$basedir/vendor/nginx/conf/nginx.conf.tmp" > "\$basedir/vendor/nginx/conf/nginx.conf"
-rm "\$basedir/vendor/nginx/conf/nginx.conf.tmp"
 
 if [ -f "\$basedir/nginx.conf.erb" ] ; then
   erb "\$basedir/nginx.conf.erb" > "\$basedir/vendor/nginx/conf/site.conf"

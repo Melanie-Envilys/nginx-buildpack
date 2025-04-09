@@ -117,7 +117,6 @@ SH
 source "$BUILD_DIR/.profile.d/nginx.sh"
 
 cp "$basedir/../config/nginx.conf.erb" "$BUILD_DIR/base_nginx.conf.erb"
-SH
 
 cat > "$BUILD_DIR/bin/run" <<SH
 #!/usr/bin/env bash

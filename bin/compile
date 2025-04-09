@@ -82,6 +82,7 @@ fi
 status "Extracted files:"
 find /tmp/njs-extract -type f | indent
 
+
 mkdir -p "$BUILD_DIR/vendor/nginx/modules"
 cp /tmp/njs-extract/usr/lib/nginx/modules/*.so "$BUILD_DIR/vendor/nginx/modules/" 2>&1 | indent
 
@@ -118,13 +119,26 @@ SH
 source "$BUILD_DIR/.profile.d/nginx.sh"
 
 cp "$basedir/../config/nginx.conf.erb" "$BUILD_DIR/base_nginx.conf.erb"
-
-
+# Ensure ModSecurity module is available for the new NGINX
 if [ "$ENABLE_MODSECURITY" = "true" ] ; then
 
+ 
+if [ "$ENABLE_MODSECURITY" = "true" ] ; then
+  status "Bundling ModSecurity ${MODSECURITY_VERSION}"
   fetch_engine_package modsecurity "$MODSECURITY_VERSION" \
     "${HOME}/vendor/modsecurity" | indent
 
+  # Copy ModSecurity module to the new NGINX modules directory
+  mkdir -p "$BUILD_DIR/vendor/nginx/modules"
+  if [ -f "${HOME}/vendor/modsecurity/ngx_http_modsecurity_module.so" ]; then
+    cp "${HOME}/vendor/modsecurity/ngx_http_modsecurity_module.so" "$BUILD_DIR/vendor/nginx/modules/"
+    status "ModSecurity module copied to NGINX modules directory"
+  else
+    status "ModSecurity module not found, will attempt to find it"
+    find "${HOME}/vendor/modsecurity" -name "*.so" | xargs -I{} cp {} "$BUILD_DIR/vendor/nginx/modules/" || true
+  fi
+
+  # Rest of your ModSecurity configuration
   cat > "$BUILD_DIR/.profile.d/modsecurity.sh" <<SH
   export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:\$HOME/vendor/modsecurity/usr/lib/x86_64-linux-gnu:\$HOME/vendor/modsecurity/lib
   erb "\$HOME/vendor/nginx/conf/modsecurity.conf.erb" > "\$HOME/vendor/nginx/conf/modsecurity.conf"

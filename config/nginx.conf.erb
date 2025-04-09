@@ -1,11 +1,7 @@
 worker_processes auto;
 daemon off;
 
-<% if ENV["ENABLE_MODSECURITY"] %>
-load_module modules/ngx_http_modsecurity_module.so;
 load_module /app/.apt/usr/lib/nginx/modules/ngx_http_js_module.so;
-
-<% end %>
 
 events {
     worker_connections  1024;

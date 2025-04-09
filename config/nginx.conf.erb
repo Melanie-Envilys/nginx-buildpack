@@ -1,8 +1,6 @@
 worker_processes auto;
 daemon off;
 
-load_module /app/vendor/nginx/modules/ngx_http_js_module.so;
-
 events {
     worker_connections  1024;
 }

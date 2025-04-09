@@ -40,6 +40,47 @@ export_env_dir() {
   fi
 }
 
+function fetch_custom() {
+  status "Bundling Nginx ${NGINX_VERSION} with PCRE2 support"
+
+  # Download from nginx.org official packages repository (stable branch)
+  NGINX_PKG_URL="https://nginx.org/packages/ubuntu/pool/nginx/n/nginx/nginx_${NGINX_VERSION}-1~jammy_amd64.deb"
+  NGINX_DEB="/tmp/nginx.deb"
+
+  status "Downloading NGINX ${NGINX_VERSION} from ${NGINX_PKG_URL}"
+  curl -L "$NGINX_PKG_URL" -o "$NGINX_DEB" || {
+    status "Stable package download failed, trying mainline"
+    NGINX_PKG_URL="https://nginx.org/packages/mainline/ubuntu/pool/nginx/n/nginx/nginx_${NGINX_VERSION}-1~jammy_amd64.deb"
+    curl -L "$NGINX_PKG_URL" -o "$NGINX_DEB" || {
+      status "ERROR: Failed to download NGINX ${NGINX_VERSION}"
+      exit 1
+    }
+  }
+
+  # Extract the DEB package
+  mkdir -p /tmp/nginx-extract "${HOME}/vendor/nginx"
+  dpkg -x "$NGINX_DEB" /tmp/nginx-extract || {
+    status "ERROR: Failed to extract NGINX package"
+    exit 1
+  }
+
+  # Copy necessary files
+  status "Installing NGINX binaries"
+  mkdir -p "${HOME}/vendor/nginx/sbin" "${HOME}/vendor/nginx/conf" "${HOME}/vendor/nginx/logs"
+  cp -r /tmp/nginx-extract/usr/sbin/nginx "${HOME}/vendor/nginx/sbin/"
+  cp -r /tmp/nginx-extract/etc/nginx/* "${HOME}/vendor/nginx/conf/" || true
+  chmod +x "${HOME}/vendor/nginx/sbin/nginx"
+
+  # Check if this NGINX binary is built with PCRE2
+  if "${HOME}/vendor/nginx/sbin/nginx" -V 2>&1 | grep -q 'PCRE2'; then
+    status "Confirmed: NGINX is built with PCRE2"
+  else
+    status "WARNING: NGINX binary may not be built with PCRE2"
+    "${HOME}/vendor/nginx/sbin/nginx" -V 2>&1 | grep -i pcre | indent
+  fi
+
+}
+
 function fetch_engine_package() {
   local engine="$1"
   local version="$2"

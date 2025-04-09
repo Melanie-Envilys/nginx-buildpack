@@ -36,7 +36,7 @@ mkdir -p "${BUILD_DIR}/.profile.d"
 export PATH="$BUILD_DIR/bin:$PATH"
 
 status "Bundling Nginx ${NGINX_VERSION}"
-fetch_engine_package nginx "$NGINX_VERSION" "${HOME}/vendor/nginx" | indent
+fetch_custom
 
 # Download and install NJS module
 status "Bundling NJS module ${NJS_VERSION}"

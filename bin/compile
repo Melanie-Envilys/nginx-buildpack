@@ -126,6 +126,10 @@ pmsgr=/tmp/pmsgr
 rm -f \$pmsgr
 mkfifo \$pmsgr
 
+# Create necessary directories at runtime
+mkdir -p "$basedir/vendor/nginx/logs" /var/log/nginx 2>/dev/null
+
+
 [ -f \$basedir/servers.conf.erb ] && export HAS_SERVER_CONF=true
 
 erb base_nginx.conf.erb > "\$basedir/vendor/nginx/conf/nginx.conf.tmp"

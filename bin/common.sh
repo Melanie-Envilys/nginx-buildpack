@@ -71,13 +71,24 @@ function fetch_custom() {
   cp -r /tmp/nginx-extract/etc/nginx/* "${HOME}/vendor/nginx/conf/" || true
   chmod +x "${HOME}/vendor/nginx/sbin/nginx"
 
-  # Check if this NGINX binary is built with PCRE2
-  if "${HOME}/vendor/nginx/sbin/nginx" -V 2>&1 | grep -q 'PCRE2'; then
-    status "Confirmed: NGINX is built with PCRE2"
-  else
-    status "WARNING: NGINX binary may not be built with PCRE2"
-    "${HOME}/vendor/nginx/sbin/nginx" -V 2>&1 | grep -i pcre | indent
-  fi
+# Check if this NGINX binary is built with PCRE2
+status "Checking NGINX configuration and PCRE version"
+"${HOME}/vendor/nginx/sbin/nginx" -V 2>&1 | indent
+
+if "${HOME}/vendor/nginx/sbin/nginx" -V 2>&1 | grep -q 'with-pcre='; then
+  status "WARNING: NGINX binary appears to be built with custom PCRE path, likely PCRE1"
+  status "Checking for PCRE2 symbols in binary"
+  strings "${HOME}/vendor/nginx/sbin/nginx" | grep -i "pcre2" | head -5 | indent
+  
+  # We need to download and install matching NJS module for PCRE1
+  status "Will try to use NJS module compatible with PCRE1"
+elif "${HOME}/vendor/nginx/sbin/nginx" -V 2>&1 | grep -q 'PCRE2'; then
+  status "Confirmed: NGINX is built with PCRE2"
+else
+  status "WARNING: NGINX binary may not have explicit PCRE2 information"
+  status "Checking for PCRE symbols in binary"
+  strings "${HOME}/vendor/nginx/sbin/nginx" | grep -i "pcre" | head -5 | indent
+fi
 
 }
 

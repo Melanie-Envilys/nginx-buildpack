@@ -58,7 +58,7 @@ function fetch_custom() {
   }
 
   # Extract the DEB package
-  mkdir -p /tmp/nginx-extract "${HOME}/vendor/nginx"
+  mkdir -p /tmp/nginx-extract "${BUILD_DIR}/vendor/nginx"
   dpkg -x "$NGINX_DEB" /tmp/nginx-extract || {
     status "ERROR: Failed to extract NGINX package"
     exit 1
@@ -66,30 +66,29 @@ function fetch_custom() {
 
   # Copy necessary files
   status "Installing NGINX binaries"
-  mkdir -p "${HOME}/vendor/nginx/sbin" "${HOME}/vendor/nginx/conf" "${HOME}/vendor/nginx/logs"
-  cp -r /tmp/nginx-extract/usr/sbin/nginx "${HOME}/vendor/nginx/sbin/"
-  cp -r /tmp/nginx-extract/etc/nginx/* "${HOME}/vendor/nginx/conf/" || true
-  chmod +x "${HOME}/vendor/nginx/sbin/nginx"
+  mkdir -p "${BUILD_DIR}/vendor/nginx/sbin" "${BUILD_DIR}/vendor/nginx/conf" "${BUILD_DIR}/vendor/nginx/logs"
+  cp -r /tmp/nginx-extract/usr/sbin/nginx "${BUILD_DIR}/vendor/nginx/sbin/"
+  cp -r /tmp/nginx-extract/etc/nginx/* "${BUILD_DIR}/vendor/nginx/conf/" || true
+  chmod +x "${BUILD_DIR}/vendor/nginx/sbin/nginx"
 
-# Check if this NGINX binary is built with PCRE2
-status "Checking NGINX configuration and PCRE version"
-"${HOME}/vendor/nginx/sbin/nginx" -V 2>&1 | indent
+  # Check if this NGINX binary is built with PCRE2
+  status "Checking NGINX configuration and PCRE version"
+  "${BUILD_DIR}/vendor/nginx/sbin/nginx" -V 2>&1 | indent
 
-if "${HOME}/vendor/nginx/sbin/nginx" -V 2>&1 | grep -q 'with-pcre='; then
-  status "WARNING: NGINX binary appears to be built with custom PCRE path, likely PCRE1"
-  status "Checking for PCRE2 symbols in binary"
-  strings "${HOME}/vendor/nginx/sbin/nginx" | grep -i "pcre2" | head -5 | indent
-  
-  # We need to download and install matching NJS module for PCRE1
-  status "Will try to use NJS module compatible with PCRE1"
-elif "${HOME}/vendor/nginx/sbin/nginx" -V 2>&1 | grep -q 'PCRE2'; then
-  status "Confirmed: NGINX is built with PCRE2"
-else
-  status "WARNING: NGINX binary may not have explicit PCRE2 information"
-  status "Checking for PCRE symbols in binary"
-  strings "${HOME}/vendor/nginx/sbin/nginx" | grep -i "pcre" | head -5 | indent
-fi
-
+  if "${BUILD_DIR}/vendor/nginx/sbin/nginx" -V 2>&1 | grep -q 'with-pcre='; then
+    status "WARNING: NGINX binary appears to be built with custom PCRE path, likely PCRE1"
+    status "Checking for PCRE2 symbols in binary"
+    strings "${BUILD_DIR}/vendor/nginx/sbin/nginx" | grep -i "pcre2" | head -5 | indent
+    
+    # We need to download and install matching NJS module for PCRE1
+    status "Will try to use NJS module compatible with PCRE1"
+  elif "${BUILD_DIR}/vendor/nginx/sbin/nginx" -V 2>&1 | grep -q 'PCRE2'; then
+    status "Confirmed: NGINX is built with PCRE2"
+  else
+    status "WARNING: NGINX binary may not have explicit PCRE2 information"
+    status "Checking for PCRE symbols in binary"
+    strings "${BUILD_DIR}/vendor/nginx/sbin/nginx" | grep -i "pcre" | head -5 | indent
+  fi
 }
 
 function fetch_engine_package() {

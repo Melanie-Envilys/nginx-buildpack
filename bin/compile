@@ -31,8 +31,8 @@ mkdir -p "${BUILD_DIR}/bin"
 mkdir -p "${BUILD_DIR}/vendor"
 mkdir -p "${BUILD_DIR}/.profile.d"
 
-mkdir -p "${BUILD_DIR}/var/log/nginx" touch "${BUILD_DIR}/var/log/nginx/access.log" "${BUILD_DIR}/var/log/nginx/error.log"
-mkdir -p "${BUILD_DIR}/var/cache/nginx/client_temp"
+mkdir -p "$/var/log/nginx" touch "/var/log/nginx/access.log" "/var/log/nginx/error.log"
+mkdir -p "/var/cache/nginx/client_temp"
 mkdir -p "${BUILD_DIR}/vendor/nginx/modules"
 
 export PATH="$BUILD_DIR/bin:$PATH"

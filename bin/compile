@@ -31,12 +31,8 @@ mkdir -p "${BUILD_DIR}/bin"
 mkdir -p "${BUILD_DIR}/vendor"
 mkdir -p "${BUILD_DIR}/.profile.d"
 
-mkdir -p "${BUILD_DIR}/vendor/nginx/logs"
-mkdir -p "${BUILD_DIR}/vendor/nginx/client_temp"
-mkdir -p "${BUILD_DIR}/vendor/nginx/proxy_temp"
-mkdir -p "${BUILD_DIR}/vendor/nginx/fastcgi_temp"
-mkdir -p "${BUILD_DIR}/vendor/nginx/uwsgi_temp"
-mkdir -p "${BUILD_DIR}/vendor/nginx/scgi_temp"
+mkdir -p "${BUILD_DIR}/var/log/nginx" touch "${BUILD_DIR}/var/log/nginx/access.log" "${BUILD_DIR}/var/log/nginx/error.log"
+mkdir -p "${BUILD_DIR}/var/cache/nginx/client_temp"
 mkdir -p "${BUILD_DIR}/vendor/nginx/modules"
 
 export PATH="$BUILD_DIR/bin:$PATH"
@@ -133,21 +129,9 @@ pmsgr=/tmp/pmsgr
 rm -f \$pmsgr
 mkfifo \$pmsgr
 
-# Create system directories with appropriate permissions
-sudo() { [ -x "$(command -v sudo)" ] && command sudo "$@" || "$@"; }
-
-# Try to create directories with sudo if available, fall back to regular mkdir if not
-# Most of these will be created at container startup by system processes, but we'll ensure they exist
-for dir in /var/log/nginx /var/run /var/cache/nginx /var/cache/nginx/client_temp /var/cache/nginx/proxy_temp /var/cache/nginx/fastcgi_temp /var/cache/nginx/uwsgi_temp /var/cache/nginx/scgi_temp; do
-  if [ ! -d "$dir" ]; then
-    echo "Creating directory $dir"
-    sudo mkdir -p "$dir" 2>/dev/null || mkdir -p "$dir" 2>/dev/null || true
-    sudo chmod 777 "$dir" 2>/dev/null || chmod 777 "$dir" 2>/dev/null || true
-  fi
-done
-
 # Ensure oauth2.js has correct permissions
 [ -f "$basedir/oauth2.js" ] && chmod 644 "$basedir/oauth2.js"
+[ -f "$basedir/var/run/nginx.pid" ] && chmod 777 "$basedir/var/run/nginx.pid"
 
 [ -f \$basedir/servers.conf.erb ] && export HAS_SERVER_CONF=true
 

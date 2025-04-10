@@ -30,9 +30,9 @@ mkdir -p "${CACHE_DIR}/package"
 mkdir -p "${BUILD_DIR}/bin"
 mkdir -p "${BUILD_DIR}/vendor"
 mkdir -p "${BUILD_DIR}/.profile.d"
-
-mkdir -p "$/var/log/nginx" touch "/var/log/nginx/access.log" "/var/log/nginx/error.log"
-mkdir -p "/var/cache/nginx/client_temp"
+mkdir -p "${BUILD_DIR}/vendor/nginx/logs" touch "${BUILD_DIR}/vendor/nginx/logs/access.log" "${BUILD_DIR}/vendor/nginx/logs/error.log"
+mkdir -p "${BUILD_DIR}/vendor/nginx/cache/client_temp"
+mkdir -p "${BUILD_DIR}/vendor/nginx/run"
 mkdir -p "${BUILD_DIR}/vendor/nginx/modules"
 
 export PATH="$BUILD_DIR/bin:$PATH"

@@ -1,5 +1,7 @@
 worker_processes auto;
 daemon off;
+pid /app/vendor/nginx/run/nginx.pid;
+error_log /app/vendor/nginx/logs/error.log notice;
 
 events {
     worker_connections  1024;
@@ -7,6 +9,8 @@ events {
 http {
     # Hide nginx version information.
     server_tokens off;
+    
+    client_body_temp_path /app/vendor/nginx/client_temp;
 
     sendfile    on;
     tcp_nopush  on;

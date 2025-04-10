@@ -10,7 +10,8 @@ http {
     # Hide nginx version information.
     server_tokens off;
     
-    client_body_temp_path /app/vendor/nginx/client_temp;
+    client_body_temp_path /app/vendor/nginx/cache/client_temp;
+    proxy_temp_path /app/vendor/nginx/cache/proxy_temp;
 
     sendfile    on;
     tcp_nopush  on;
